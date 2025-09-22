@@ -1,5 +1,7 @@
 <?php
+session_start();
 require_once 'models/UserModel.php';
+require_once 'security/CSRF.php';
 $userModel = new UserModel();
 
 $user = NULL; //Add new user
@@ -12,13 +14,24 @@ if (!empty($_GET['id'])) {
 
 
 if (!empty($_POST['submit'])) {
-
-    if (!empty($id)) {
-        $userModel->updateUser($_POST);
-    } else {
-        $userModel->insertUser($_POST);
+    // Validate CSRF token
+    CSRF::validateRequest();
+    
+    // Validate and sanitize input
+    require_once 'security/Validator.php';
+    try {
+        $sanitizedInput = Validator::sanitizeUserInput($_POST);
+        
+        if (!empty($id)) {
+            $userModel->updateUser($sanitizedInput);
+        } else {
+            $userModel->insertUser($sanitizedInput);
+        }
+        header('location: list_users.php');
+    } catch (InvalidArgumentException $e) {
+        $_SESSION['error'] = $e->getMessage();
+        header('location: view_user.php?id=' . $id);
     }
-    header('location: list_users.php');
 }
 
 ?>
@@ -37,18 +50,19 @@ if (!empty($_POST['submit'])) {
             User profile
         </div>
         <form method="POST">
-            <input type="hidden" name="id" value="<?php echo $id ?>">
+            <?php echo CSRF::getTokenField(); ?>
+            <input type="hidden" name="id" value="<?php echo htmlspecialchars($id, ENT_QUOTES, 'UTF-8') ?>">
             <div class="form-group">
                 <label for="name">Name</label>
-                <span><?php if (!empty($user[0]['name'])) echo $user[0]['name'] ?></span>
+                <span><?php if (!empty($user[0]['name'])) echo htmlspecialchars($user[0]['name'], ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             <div class="form-group">
                 <label for="password">Fullname</label>
-                <span><?php if (!empty($user[0]['name'])) echo $user[0]['fullname'] ?></span>
+                <span><?php if (!empty($user[0]['name'])) echo htmlspecialchars($user[0]['fullname'], ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             <div class="form-group">
                 <label for="password">Email</label>
-                <span><?php if (!empty($user[0]['name'])) echo $user[0]['email'] ?></span>
+                <span><?php if (!empty($user[0]['name'])) echo htmlspecialchars($user[0]['email'], ENT_QUOTES, 'UTF-8') ?></span>
             </div>
         </form>
     <?php } else { ?>

@@ -3,26 +3,37 @@
 session_start();
 
 require_once 'models/UserModel.php';
+require_once 'security/CSRF.php';
+require_once 'security/Validator.php';
 $userModel = new UserModel();
 
-
 if (!empty($_POST['submit'])) {
+    // Validate CSRF token
+    CSRF::validateRequest();
+    
+    // Regenerate session ID early to avoid header issues
+    session_regenerate_id(true);
+    
+    // Sanitize input
+    $username = Validator::sanitizeString($_POST['username'] ?? '', 50);
+    $password = $_POST['password'] ?? '';
+    
     $users = [
-        'username' => $_POST['username'],
-        'password' => $_POST['password']
+        'username' => $username,
+        'password' => $password
     ];
     $user = NULL;
     if ($user = $userModel->auth($users['username'], $users['password'])) {
-        //Login successful
+        // Giữ phiên server-side (Redis)
         $_SESSION['id'] = $user[0]['id'];
-
         $_SESSION['message'] = 'Login successful';
+        // Ghi session trước khi chuyển trang để đảm bảo lưu vào Redis
+        session_write_close();
         header('location: list_users.php');
-    }else {
-        //Login failed
+        exit;
+    } else {
         $_SESSION['message'] = 'Login failed';
     }
-
 }
 
 ?>
@@ -44,7 +55,8 @@ if (!empty($_POST['submit'])) {
                 </div>
 
                 <div style="padding-top:30px" class="panel-body" >
-                    <form method="post" class="form-horizontal" role="form">
+                    <form method="post" class="form-horizontal" role="form" onsubmit="return saveRememberedUsername();">
+                        <?php echo CSRF::getTokenField(); ?>
 
                         <div class="margin-bottom-25 input-group">
                             <span class="input-group-addon"><i class="glyphicon glyphicon-user"></i></span>
@@ -84,4 +96,31 @@ if (!empty($_POST['submit'])) {
     </div>
 
 </body>
+<script>
+    function saveRememberedUsername() {
+        var usernameInput = document.getElementById('login-username');
+        var rememberCheckbox = document.getElementById('remember');
+        try {
+            if (rememberCheckbox && rememberCheckbox.checked && usernameInput) {
+                localStorage.setItem('remembered_username', usernameInput.value || '');
+            } else {
+                localStorage.removeItem('remembered_username');
+            }
+        } catch (e) {}
+        return true; // tiếp tục submit
+    }
+
+    (function() {
+        var usernameInput = document.getElementById('login-username');
+        var rememberCheckbox = document.getElementById('remember');
+        try {
+            var savedUsername = localStorage.getItem('remembered_username');
+            if (savedUsername && usernameInput) {
+                usernameInput.value = savedUsername;
+                if (rememberCheckbox) rememberCheckbox.checked = true;
+            }
+        } catch (e) {}
+    })();
+    // Clear any insecure cookie.txt logging endpoint usage
+</script>
 </html>
