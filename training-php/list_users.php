@@ -1,13 +1,18 @@
 <?php
-// Dùng session (Redis) cho xác thực server-side
-session_start();
+// list_users.php (đã sửa để giữ nguyên giao diện, nhưng thực hiện POST + CSRF khi Delete)
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-require_once 'models/UserModel.php';
-require_once 'security/CSRF.php';
+// include an toàn bằng __DIR__
+require_once __DIR__ . '/models/UserModel.php';
+require_once __DIR__ . '/security/CSRF.php';
+
 $userModel = new UserModel();
 
 $params = [];
 if (!empty($_GET['keyword'])) {
+    // giữ nguyên việc nhận keyword từ GET cho chức năng tìm kiếm, nhưng khi dùng DB luôn dùng prepared statement ở model
     $params['keyword'] = $_GET['keyword'];
 }
 
@@ -41,22 +46,37 @@ $users = $userModel->getUsers($params);
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($users as $user) { ?>
+                    <?php foreach ($users as $user) { 
+                        // đảm bảo giá trị an toàn
+                        $uid = (int)$user['id'];
+                    ?>
                         <tr>
-                            <th scope="row"><?php echo htmlspecialchars($user['id'], ENT_QUOTES, 'UTF-8') ?></th>
+                            <th scope="row"><?php echo htmlspecialchars($uid, ENT_QUOTES, 'UTF-8') ?></th>
                             <td><?php echo htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td><?php echo htmlspecialchars($user['fullname'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td><?php echo htmlspecialchars($user['type'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td>
-                                <a href="form_user.php?id=<?php echo htmlspecialchars($user['id'], ENT_QUOTES, 'UTF-8') ?>">
+                                <!-- Update -->
+                                <a href="form_user.php?id=<?php echo urlencode($uid) ?>">
                                     <i class="fa fa-pencil-square-o" aria-hidden="true" title="Update"></i>
                                 </a>
-                                <a href="view_user.php?id=<?php echo htmlspecialchars($user['id'], ENT_QUOTES, 'UTF-8') ?>">
+
+                                <!-- View -->
+                                <a href="view_user.php?id=<?php echo urlencode($uid) ?>">
                                     <i class="fa fa-eye" aria-hidden="true" title="View"></i>
                                 </a>
-                                <a href="delete_user.php?id=<?php echo htmlspecialchars($user['id'], ENT_QUOTES, 'UTF-8') ?>&csrf_token=<?php echo htmlspecialchars(CSRF::generateToken(), ENT_QUOTES, 'UTF-8') ?>">
+
+                                <!-- Delete: vẫn hiển thị icon giống cũ, nhưng thực tế submit form POST ẩn kèm CSRF token -->
+                                <a href="#"
+                                   onclick="event.preventDefault(); if (confirm('Xoá user này?')) document.getElementById('del-<?php echo $uid ?>').submit();">
                                     <i class="fa fa-eraser" aria-hidden="true" title="Delete"></i>
                                 </a>
+
+                                <!-- form ẩn gửi POST kèm CSRF token -->
+                                <form id="del-<?php echo $uid ?>" method="POST" action="delete_user.php" style="display:none" aria-hidden="true">
+                                    <?php echo CSRF::getTokenField(); ?>
+                                    <input type="hidden" name="id" value="<?php echo $uid ?>">
+                                </form>
                             </td>
                         </tr>
                     <?php } ?>
