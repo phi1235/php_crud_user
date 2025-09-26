@@ -47,10 +47,11 @@ $users = $userModel->getUsers($params);
                 </thead>
                 <tbody>
                     <?php foreach ($users as $user) { 
-                        // đảm bảo giá trị an toàn
+                        // ✅ CHỐNG XSS: Ép kiểu integer để đảm bảo giá trị an toàn
                         $uid = (int)$user['id'];
                     ?>
                         <tr>
+                            <!-- ✅ CHỐNG XSS: htmlspecialchars() escape tất cả output -->
                             <th scope="row"><?php echo htmlspecialchars($uid, ENT_QUOTES, 'UTF-8') ?></th>
                             <td><?php echo htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td><?php echo htmlspecialchars($user['fullname'], ENT_QUOTES, 'UTF-8') ?></td>
@@ -66,13 +67,13 @@ $users = $userModel->getUsers($params);
                                     <i class="fa fa-eye" aria-hidden="true" title="View"></i>
                                 </a>
 
-                                <!-- Delete: vẫn hiển thị icon giống cũ, nhưng thực tế submit form POST ẩn kèm CSRF token -->
+                                <!-- ✅ CHỐNG CSRF: Delete action sử dụng form POST ẩn kèm CSRF token thay vì GET -->
                                 <a href="#"
                                    onclick="event.preventDefault(); if (confirm('Xoá user này?')) document.getElementById('del-<?php echo $uid ?>').submit();">
                                     <i class="fa fa-eraser" aria-hidden="true" title="Delete"></i>
                                 </a>
 
-                                <!-- form ẩn gửi POST kèm CSRF token -->
+                                <!-- ✅ CHỐNG CSRF: Form ẩn gửi POST kèm CSRF token -->
                                 <form id="del-<?php echo $uid ?>" method="POST" action="delete_user.php" style="display:none" aria-hidden="true">
                                     <?php echo CSRF::getTokenField(); ?>
                                     <input type="hidden" name="id" value="<?php echo $uid ?>">

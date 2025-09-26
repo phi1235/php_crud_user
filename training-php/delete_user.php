@@ -5,20 +5,20 @@ require_once __DIR__ . '/models/UserModel.php';
 
 session_start();
 
-// Chỉ cho phép phương thức POST
+// ✅ BẢO MẬT: Chỉ cho phép phương thức POST để tránh CSRF qua GET
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405); // Method Not Allowed
     exit('Method Not Allowed');
 }
 
-// Kiểm tra CSRF token
+// ✅ CHỐNG CSRF: Kiểm tra CSRF token để xác thực request hợp lệ
 $token = $_POST['csrf_token'] ?? '';
 if (!CSRF::verifyToken($token)) {
     http_response_code(403); // Forbidden
     exit('CSRF token validation failed');
 }
 
-// Lấy và validate ID
+// ✅ VALIDATION: Lấy và validate ID để đảm bảo là integer hợp lệ
 $id = $_POST['id'] ?? null;
 if (!Validator::validateInt($id)) {
     http_response_code(400); // Bad Request

@@ -3,7 +3,7 @@ services:
     build: .
     container_name: training_php_web
     ports:
-      - "8080:80"
+      - "8090:80"
     volumes:
       - ../training-php:/var/www/html
     environment:
@@ -13,8 +13,11 @@ services:
       DB_PASSWORD: root
       DB_PORT: "3306"
       DB_NAME: app_web1
+      SESSION_SAVE_HANDLER: redis
+      SESSION_SAVE_PATH: "tcp://redis:6379?database=0&timeout=2.0&prefix=PHPREDIS_SESSION:"
     depends_on:
       - db
+      - redis
 
   db:
     image: mariadb:10.11
@@ -22,8 +25,6 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: app_web1
-    ports:
-      - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
       - ../training-php/database/app_web1.sql:/docker-entrypoint-initdb.d/01_app_web1.sql:ro
@@ -37,9 +38,13 @@ services:
       PMA_USER: root
       PMA_PASSWORD: root
     ports:
-      - "8081:80"
+      - "8091:80"
     depends_on:
       - db
+
+  redis:
+    image: redis:7-alpine
+    container_name: training_php_redis
 
 volumes:
   db_data:

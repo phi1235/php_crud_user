@@ -1,6 +1,9 @@
 <?php
 // form_user.php — giữ nguyên luồng cũ: POST về chính trang này, chỉ thêm CSRF
 
+// Set UTF-8 encoding for output
+header('Content-Type: text/html; charset=UTF-8');
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -21,7 +24,7 @@ if (!empty($_GET['id'])) {
 
 // Submit form (POST về chính trang này)
 if (!empty($_POST['submit'])) {
-    // ✅ Kiểm tra CSRF token (bổ sung)
+    // ✅ CHỐNG CSRF: Kiểm tra CSRF token để ngăn chặn Cross-Site Request Forgery
     $token = $_POST['csrf_token'] ?? '';
     if (!CSRF::verifyToken($token)) {
         http_response_code(403);
@@ -56,32 +59,37 @@ if (!empty($_POST['submit'])) {
         </div>
 
         <!-- Không đặt action => POST về chính form_user.php (giữ nguyên như cũ) -->
-        <form method="POST">
-            <!-- ✅ CSRF hidden field (bổ sung) -->
+        <form method="POST" accept-charset="UTF-8">
+            <!-- ✅ CHỐNG CSRF: Thêm hidden field chứa CSRF token -->
             <?= CSRF::getTokenField(); ?>
 
+            <!-- ✅ CHỐNG XSS: Escape HTML entities cho giá trị ID -->
             <input type="hidden" name="id" value="<?php echo htmlspecialchars($_id ?? '', ENT_QUOTES, 'UTF-8') ?>">
 
             <div class="form-group">
                 <label for="name">Name</label>
+                <!-- ✅ CHỐNG XSS: htmlspecialchars() để escape HTML entities -->
                 <input class="form-control" name="name" placeholder="Name" required
                        value='<?php if (!empty($user[0]["name"])) echo htmlspecialchars($user[0]["name"], ENT_QUOTES, "UTF-8"); ?>'>
             </div>
 
             <div class="form-group">
                 <label for="fullname">Full name</label>
+                <!-- ✅ CHỐNG XSS: htmlspecialchars() để escape HTML entities -->
                 <input class="form-control" name="fullname" placeholder="Full name" required
                        value='<?php if (!empty($user[0]["fullname"])) echo htmlspecialchars($user[0]["fullname"], ENT_QUOTES, "UTF-8"); ?>'>
             </div>
 
             <div class="form-group">
                 <label for="email">Email</label>
+                <!-- ✅ CHỐNG XSS: htmlspecialchars() để escape HTML entities -->
                 <input class="form-control" name="email" type="email" placeholder="Email" required
                        value='<?php if (!empty($user[0]["email"])) echo htmlspecialchars($user[0]["email"], ENT_QUOTES, "UTF-8"); ?>'>
             </div>
 
             <div class="form-group">
                 <label for="type">Type</label>
+                <!-- ✅ CHỐNG XSS: htmlspecialchars() để escape HTML entities -->
                 <input class="form-control" name="type" placeholder="Type (e.g. user/admin)"
                        value='<?php echo !empty($user[0]["type"]) ? htmlspecialchars($user[0]["type"], ENT_QUOTES, "UTF-8") : "user"; ?>'>
             </div>

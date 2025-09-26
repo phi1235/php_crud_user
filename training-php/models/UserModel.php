@@ -5,33 +5,34 @@ require_once 'BaseModel.php';
 class UserModel extends BaseModel {
 
     public function findUserById($id) {
-        $sql = 'SELECT * FROM users WHERE id = '.$id;
-        $user = $this->select($sql);
-
-        return $user;
-    }
-
-    public function findUser($keyword) {
-        $sql = 'SELECT * FROM users WHERE user_name LIKE %'.$keyword.'%'. ' OR user_email LIKE %'.$keyword.'%';
-        $user = $this->select($sql);
-
-        return $user;
-    }
-
-    /**
-     * Authentication user
-     * @param $userName
-     * @param $password
-     * @return array
-     */
-    public function auth($userNameOrEmail, $password) {
-        $md5Password = md5($password);
-        $sql = 'SELECT * FROM users WHERE (name = ? OR email = ?) AND password = ?';
+        // ✅ CHỐNG SQL INJECTION: Sử dụng prepared statement với placeholder (?)
+        $sql = 'SELECT * FROM users WHERE id = ?';
         $stmt = self::$_connection->prepare($sql);
         if ($stmt === false) {
             return [];
         }
-        $stmt->bind_param('sss', $userNameOrEmail, $userNameOrEmail, $md5Password);
+        // ✅ CHỐNG SQL INJECTION: Bind parameter với kiểu dữ liệu cụ thể (integer)
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $rows[] = $row;
+            }
+        }
+        $stmt->close();
+        return $rows;
+    }
+
+    public function findUser($keyword) {
+        $sql = 'SELECT * FROM users WHERE name LIKE ? OR email LIKE ?';
+        $stmt = self::$_connection->prepare($sql);
+        if ($stmt === false) {
+            return [];
+        }
+        $searchTerm = '%' . $keyword . '%';
+        $stmt->bind_param('ss', $searchTerm, $searchTerm);
         $stmt->execute();
         $result = $stmt->get_result();
         $rows = [];
@@ -45,14 +46,50 @@ class UserModel extends BaseModel {
     }
 
     /**
+     * Authentication user
+     * @param $userName
+     * @param $password
+     * @return array
+     */
+    public function auth($userNameOrEmail, $password) {
+        // ✅ CHỐNG SQL INJECTION: Prepared statement cho authentication
+        $sql = 'SELECT * FROM users WHERE name = ? OR email = ?';
+        $stmt = self::$_connection->prepare($sql);
+        if ($stmt === false) {
+            return [];
+        }
+        // ✅ CHỐNG SQL INJECTION: Bind parameters an toàn
+        $stmt->bind_param('ss', $userNameOrEmail, $userNameOrEmail);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                // ✅ BẢO MẬT MẬT KHẨU: Sử dụng password_verify thay vì so sánh trực tiếp
+                if (password_verify($password, $row['password'])) {
+                    $rows[] = $row;
+                }
+            }
+        }
+        $stmt->close();
+        return $rows;
+    }
+
+    /**
      * Delete user by id
      * @param $id
      * @return mixed
      */
     public function deleteUserById($id) {
-        $sql = 'DELETE FROM users WHERE id = '.$id;
-        return $this->delete($sql);
-
+        $sql = 'DELETE FROM users WHERE id = ?';
+        $stmt = self::$_connection->prepare($sql);
+        if ($stmt === false) {
+            return false;
+        }
+        $stmt->bind_param('i', $id);
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
     }
 
     /**
@@ -61,14 +98,18 @@ class UserModel extends BaseModel {
      * @return mixed
      */
     public function updateUser($input) {
-        $sql = 'UPDATE users SET 
-                 name = "' . mysqli_real_escape_string(self::$_connection, $input['name']) .'", 
-                 password="'. md5($input['password']) .'"
-                WHERE id = ' . $input['id'];
-
-        $user = $this->update($sql);
-
-        return $user;
+        $sql = 'UPDATE users SET name = ?, password = ? WHERE id = ?';
+        $stmt = self::$_connection->prepare($sql);
+        if ($stmt === false) {
+            return false;
+        }
+        // ✅ BẢO MẬT MẬT KHẨU: Hash password trước khi lưu vào database
+        $passwordHash = password_hash($input['password'], PASSWORD_DEFAULT);
+        // ✅ CHỐNG SQL INJECTION: Bind parameters với kiểu dữ liệu cụ thể
+        $stmt->bind_param('ssi', $input['name'], $passwordHash, $input['id']);
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
     }
 
     /**
@@ -85,17 +126,19 @@ class UserModel extends BaseModel {
         $email = trim($input['email'] ?? '');
         $type = trim($input['type'] ?? 'user');
         $password = (string)($input['password'] ?? '');
-        $passwordHash = md5($password);
+        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
         if ($fullname === '' || $email === '' || $type === '') {
             throw new \Exception('fullname/email/type are required');
         }
 
+        // ✅ CHỐNG SQL INJECTION: Prepared statement cho INSERT operation
         $sql = "INSERT INTO users (`name`,`fullname`,`email`,`type`,`password`) VALUES (?,?,?,?,?)";
         $stmt = $conn->prepare($sql);
         if ($stmt === false) {
             throw new \Exception('Prepare failed');
         }
+        // ✅ CHỐNG SQL INJECTION: Bind tất cả parameters với kiểu string
         $stmt->bind_param("sssss", $name, $fullname, $email, $type, $passwordHash);
         $ok = $stmt->execute();
         $stmt->close();
@@ -110,15 +153,22 @@ class UserModel extends BaseModel {
     public function getUsers($params = []) {
         //Keyword
         if (!empty($params['keyword'])) {
-            $sql = 'SELECT * FROM users WHERE name LIKE "%' . $params['keyword'] .'%"';
-
-            //Keep this line to use Sql Injection
-            //Don't change
-            //Example keyword: abcef%";TRUNCATE banks;##
-            $users = self::$_connection->multi_query($sql);
-
-            //Get data
-            $users = $this->query($sql);
+            $sql = 'SELECT * FROM users WHERE name LIKE ?';
+            $stmt = self::$_connection->prepare($sql);
+            if ($stmt === false) {
+                return [];
+            }
+            $searchTerm = '%' . $params['keyword'] . '%';
+            $stmt->bind_param('s', $searchTerm);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $users = [];
+            if ($result) {
+                while ($row = $result->fetch_assoc()) {
+                    $users[] = $row;
+                }
+            }
+            $stmt->close();
         } else {
             $sql = 'SELECT * FROM users';
             $users = $this->select($sql);

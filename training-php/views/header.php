@@ -1,4 +1,7 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 $id = '';
 if(!empty($_SESSION['id'])) {
     $id = $_SESSION['id'];
@@ -31,7 +34,7 @@ if(!empty($_GET['keyword'])) {
                 <form class="navbar-form navbar-left">
                     <div class="form-group">
                         <input type="text" name="keyword" class="form-control" placeholder="Search users"
-                               value="<?php echo $keyword ?>"
+                               value="<?php echo htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8') ?>"
                         >
                     </div>
                     <button type="submit" class="btn btn-default">Search</button>
@@ -43,7 +46,7 @@ if(!empty($_GET['keyword'])) {
                             Account <span class="caret"></span>
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a href="view_user.php?id=<?php echo $id ?>">Profile</a></li>
+                            <li><a href="view_user.php?id=<?php echo htmlspecialchars($id, ENT_QUOTES, 'UTF-8') ?>">Profile</a></li>
                             <li role="separator" class="divider"></li>
                             <li><a href="login.php">Login</a></li>
                             <li><a href="logout.php">Logout</a></li>
@@ -55,7 +58,7 @@ if(!empty($_GET['keyword'])) {
     <?php if(!empty($_SESSION['message'])){ ?>
         <div class="alert alert-warning" role="alert">
             <?php
-            echo $_SESSION['message'];
+            echo htmlspecialchars($_SESSION['message'], ENT_QUOTES, 'UTF-8');
             unset($_SESSION['message']);
             ?>
         </div>

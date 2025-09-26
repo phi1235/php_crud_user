@@ -14,10 +14,10 @@ if (!empty($_GET['id'])) {
 
 
 if (!empty($_POST['submit'])) {
-    // Validate CSRF token
+    // ✅ CHỐNG CSRF: Validate CSRF token để ngăn chặn Cross-Site Request Forgery
     CSRF::validateRequest();
     
-    // Validate and sanitize input
+    // ✅ VALIDATION & SANITIZATION: Validate và sanitize input để tránh XSS và injection
     require_once 'security/Validator.php';
     try {
         $sanitizedInput = Validator::sanitizeUserInput($_POST);
@@ -50,18 +50,23 @@ if (!empty($_POST['submit'])) {
             User profile
         </div>
         <form method="POST">
+            <!-- ✅ CHỐNG CSRF: Thêm CSRF token vào form -->
             <?php echo CSRF::getTokenField(); ?>
+            <!-- ✅ CHỐNG XSS: Escape HTML entities cho ID -->
             <input type="hidden" name="id" value="<?php echo htmlspecialchars($id, ENT_QUOTES, 'UTF-8') ?>">
             <div class="form-group">
                 <label for="name">Name</label>
+                <!-- ✅ CHỐNG XSS: htmlspecialchars() escape output -->
                 <span><?php if (!empty($user[0]['name'])) echo htmlspecialchars($user[0]['name'], ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             <div class="form-group">
                 <label for="password">Fullname</label>
+                <!-- ✅ CHỐNG XSS: htmlspecialchars() escape output -->
                 <span><?php if (!empty($user[0]['name'])) echo htmlspecialchars($user[0]['fullname'], ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             <div class="form-group">
                 <label for="password">Email</label>
+                <!-- ✅ CHỐNG XSS: htmlspecialchars() escape output -->
                 <span><?php if (!empty($user[0]['name'])) echo htmlspecialchars($user[0]['email'], ENT_QUOTES, 'UTF-8') ?></span>
             </div>
         </form>

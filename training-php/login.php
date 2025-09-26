@@ -8,13 +8,13 @@ require_once 'security/Validator.php';
 $userModel = new UserModel();
 
 if (!empty($_POST['submit'])) {
-    // Validate CSRF token
+    // ✅ CHỐNG CSRF: Validate CSRF token để ngăn chặn Cross-Site Request Forgery
     CSRF::validateRequest();
     
-    // Regenerate session ID early to avoid header issues
+    // ✅ BẢO MẬT SESSION: Regenerate session ID để tránh session fixation
     session_regenerate_id(true);
     
-    // Sanitize input
+    // ✅ SANITIZE INPUT: Làm sạch input để tránh XSS và các tấn công khác
     $username = Validator::sanitizeString($_POST['username'] ?? '', 50);
     $password = $_POST['password'] ?? '';
     
@@ -56,6 +56,7 @@ if (!empty($_POST['submit'])) {
 
                 <div style="padding-top:30px" class="panel-body" >
                     <form method="post" class="form-horizontal" role="form" onsubmit="return saveRememberedUsername();">
+                        <!-- ✅ CHỐNG CSRF: Thêm CSRF token vào form login -->
                         <?php echo CSRF::getTokenField(); ?>
 
                         <div class="margin-bottom-25 input-group">
